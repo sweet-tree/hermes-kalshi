@@ -1,7 +1,7 @@
 ---
 name: lilly-redis
-description: "Use when Lilly reads live Redis health or quote ages."
-version: 0.1.0
+description: "Use when Lilly reads Redis health, windows, or BBO."
+version: 0.3.0
 author: Dmitry, Hermes Agent
 license: MIT
 platforms: [linux]
@@ -12,31 +12,33 @@ metadata:
 
 # Lilly Redis (read-only)
 
-Live Kalshi state in Redis on this box. This package: SKILL.md + scripts/. Never print the password.
+Live Kalshi state in Redis on this box. Package: SKILL.md + scripts/. Never print the password.
 
 ## When to Use
 
 - Book/ticker stale, health, `connected_public`, queue depth
-- "Is the ladder live?"
+- Which 15m / hourly event is live
+- Executable yes bid/ask on the current 15m market or hourly ATM
 
-Don't use for: writes, `KEYS *`, DuckLake, placing orders, dumping `requirepass`.
+Don't use for: writes, `KEYS *`, DuckLake, placing orders, dumping `requirepass`, dumping all 11 hourly books.
 
 ## How
 
-Only these two (this skill's scripts/):
+Only these (this skill's `scripts/`, cwd does not matter):
 
 ```bash
-$HOME/.hermes/skills/devops/lilly-redis/scripts/health.py     # process-level
-$HOME/.hermes/skills/devops/lilly-redis/scripts/windows.py    # current events (lifecycle clock)
+$HOME/.hermes/skills/devops/lilly-redis/scripts/health.py
+$HOME/.hermes/skills/devops/lilly-redis/scripts/windows.py
+$HOME/.hermes/skills/devops/lilly-redis/scripts/quotes.py
 ```
 
-`health.py`: ingest/ping/ticker/book ages, `is_stale`, `connected_public`, `io_queue_depth`.
+`health.py`: process-level ingest/ping/ticker/book ages, `is_stale`, `connected_public`, `io_queue_depth`.
 
-`windows.py`: **current** windows only — lifecycle `open_ts`/`close_ts` (unix seconds, REST; WS null must not wipe). Event ticker = last `-<suffix>` stripped. Then min book/ticker source age.
+`windows.py`: **current** = lifecycle `open<=now<close` **and** quote keys exist. Do not SCAN every lifecycle key — unused overlapping `KXBTCD` windows exist.
 
-Do not treat process-level `last_ticker_ts_ms` or quote SCAN freshness alone as "current event."
+`quotes.py`: GET `kalshi:state:quote:v1:{ticker}` for the current 15m market(s) and the hourly ATM only. ATM = `select_nearest_market_tickers(k=1)` with live spot (`price:live:rust:BTC/USDT`, same parse as `kalshi_state` `spot.rs`). No spot → no ATM (no median). Print `yes_bid_dollars` / `yes_ask_dollars` / `integrity` / book age. Not the 10-level book.
 
-AUTH is inside the script (`/home/dmitry/.bogachka/redis/redis.conf`). Do not `cat` that file. Do not pass the password on a command line.
+AUTH is inside the client (`/home/dmitry/.bogachka/redis/redis.conf`). Do not `cat` that file. Do not pass the password on a command line.
 
 ## Read the ages
 
@@ -48,9 +50,9 @@ AUTH is inside the script (`/home/dmitry/.bogachka/redis/redis.conf`). Do not `c
 ## Forbidden
 
 - `SET`, `DEL`, `FLUSH*`, `CONFIG`, `SHUTDOWN`
-- `KEYS *` or SCAN of the whole quote namespace into chat
+- `KEYS *` or pasting the whole quote SCAN into chat
 - Printing Redis URL or requirepass
 
 ## Verification
 
-`health.py` and `windows.py` exit 0 and print ages/event ids, not a password.
+Scripts exit 0 and print ages / event ids / BBO, not a password.
