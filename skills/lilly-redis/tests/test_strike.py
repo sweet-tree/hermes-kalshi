@@ -7,10 +7,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from strike import (  # noqa: E402
     event_ticker_of,
+    market_for_strike,
     parse_price_live,
     parse_strike,
     select_nearest_market_tickers,
-    spot_for_event_ticker,
 )
 
 
@@ -62,10 +62,21 @@ class StrikeTests(unittest.TestCase):
         self.assertAlmostEqual(parse_price_live(b"81264.79:123"), 81264.79)
         self.assertIsNone(parse_price_live(None))
 
-    def test_spot_for_event(self):
-        self.assertEqual(spot_for_event_ticker("KXBTCD-26SEP1920", 1.0, 2.0), 1.0)
-        self.assertEqual(spot_for_event_ticker("KXETHD-26SEP1920", 1.0, 2.0), 2.0)
-        self.assertIsNone(spot_for_event_ticker("KXBTC15M-26SEP191945", 1.0, 2.0))
+    def test_market_for_strike_exact_no_snap(self):
+        markets = [
+            "KXBTCD-TEST-T81199.99",
+            "KXBTCD-TEST-T81299.99",
+        ]
+        self.assertEqual(
+            market_for_strike(markets, "81299.99"),
+            "KXBTCD-TEST-T81299.99",
+        )
+        self.assertEqual(
+            market_for_strike(markets, "T81199.99"),
+            "KXBTCD-TEST-T81199.99",
+        )
+        self.assertIsNone(market_for_strike(markets, "81300"))
+        self.assertIsNone(market_for_strike(markets, "81264.79"))
 
 
 if __name__ == "__main__":

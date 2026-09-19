@@ -11,7 +11,7 @@ skills/lilly-redis/          Hermes skill package
   SKILL.md
   scripts/health.py          process-level kalshi_state health
   scripts/windows.py         current events from lifecycle + quote ages
-  scripts/quotes.py          15m BBO + hourly ATM (k=1, live spot)
+  scripts/quotes.py          15m | hourly ladder | hourly <strike>
   tests/test_strike.py       lockstep with kalshi_state strike_util.rs
 ```
 

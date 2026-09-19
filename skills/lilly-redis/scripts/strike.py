@@ -93,3 +93,29 @@ def spot_for_event_ticker(event_ticker: str, btc: float | None, eth: float | Non
     if event_ticker.startswith("KXBTCD"):
         return btc
     return None
+
+
+def requested_strike(token: str) -> float | None:
+    t = token.strip()
+    if t.startswith("KX") and parse_strike(t) is not None:
+        return parse_strike(t)
+    if t.upper().startswith("T"):
+        t = t[1:]
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
+def market_for_strike(markets: list[str], token: str) -> str | None:
+    """Exact ticker or exact strike among `markets`. No silent nearest-snap."""
+    token = token.strip()
+    if token in markets:
+        return token
+    want = requested_strike(token)
+    if want is None:
+        return None
+    hits = [m for m in markets if parse_strike(m) == want]
+    if len(hits) == 1:
+        return hits[0]
+    return None

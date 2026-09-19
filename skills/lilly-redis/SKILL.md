@@ -1,7 +1,7 @@
 ---
 name: lilly-redis
 description: "Use when Lilly reads Redis health, windows, or BBO."
-version: 0.3.0
+version: 0.4.0
 author: Dmitry, Hermes Agent
 license: MIT
 platforms: [linux]
@@ -18,25 +18,25 @@ Live Kalshi state in Redis on this box. Package: SKILL.md + scripts/. Never prin
 
 - Book/ticker stale, health, `connected_public`, queue depth
 - Which 15m / hourly event is live
-- Executable yes bid/ask on the current 15m market or hourly ATM
+- Yes bid/ask for **one** series: current 15m, or the hourly ladder, or one hourly strike
 
-Don't use for: writes, `KEYS *`, DuckLake, placing orders, dumping `requirepass`, dumping all 11 hourly books.
+Don't use for: writes, `KEYS *`, DuckLake, placing orders, dumping `requirepass`.
 
 ## How
-
-Only these (this skill's `scripts/`, cwd does not matter):
 
 ```bash
 $HOME/.hermes/skills/devops/lilly-redis/scripts/health.py
 $HOME/.hermes/skills/devops/lilly-redis/scripts/windows.py
-$HOME/.hermes/skills/devops/lilly-redis/scripts/quotes.py
+$HOME/.hermes/skills/devops/lilly-redis/scripts/quotes.py 15m
+$HOME/.hermes/skills/devops/lilly-redis/scripts/quotes.py hourly
+$HOME/.hermes/skills/devops/lilly-redis/scripts/quotes.py hourly 81299.99
 ```
 
-`health.py`: process-level ingest/ping/ticker/book ages, `is_stale`, `connected_public`, `io_queue_depth`.
+`quotes.py` requires `15m` or `hourly`. It does not print both. Hourly without a strike prints every quote Redis has for that event (the subscribed ladder), sorted, and marks ATM. Hourly with a strike is **exact** (`81299.99`, `T81299.99`, or full ticker) — no snap to ATM. Missing strike → `MISSING` and the list we do have.
 
-`windows.py`: **current** = lifecycle `open<=now<close` **and** quote keys exist. Do not SCAN every lifecycle key — unused overlapping `KXBTCD` windows exist.
+15m is strikeless; do not pass a strike.
 
-`quotes.py`: GET `kalshi:state:quote:v1:{ticker}` for the current 15m market(s) and the hourly ATM only. ATM = `select_nearest_market_tickers(k=1)` with live spot (`price:live:rust:BTC/USDT`, same parse as `kalshi_state` `spot.rs`). No spot → no ATM (no median). Print `yes_bid_dollars` / `yes_ask_dollars` / `integrity` / book age. Not the 10-level book.
+Redis only contains strikes `kalshi_state` subscribed. A strike outside that window is not fetchable from this script.
 
 AUTH is inside the client (`/home/dmitry/.bogachka/redis/redis.conf`). Do not `cat` that file. Do not pass the password on a command line.
 
