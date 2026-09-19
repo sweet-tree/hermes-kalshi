@@ -21,7 +21,7 @@ mkdir -p ~/.hermes/skills/devops
 ln -sfn "$(pwd)/hermes-kalshi/skills/lilly-redis" ~/.hermes/skills/devops/lilly-redis
 ```
 
-Scripts talk to Redis on `127.0.0.1:6379` and read `requirepass` from the host `redis.conf`. They never print the password. They belong on the **live box**, not on a laptop Redis.
+Scripts read Redis on the live host and never print secrets. They belong on that host, not a laptop.
 
 ## License
 
